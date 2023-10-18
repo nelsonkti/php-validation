@@ -1,20 +1,20 @@
 Validation
 ======================================================
 
-PHP Standalone library for validating data. Inspired by `Illuminate\Validation` Laravel.
+用于验证数据的PHP独立库。适用于任何框架
 
 ## Features
 
-* API like Laravel validation.
-* Array validation.
-* `$_FILES` validation with multiple file support.
-* Custom attribute aliases.
-* Custom validation messages.
-* Custom rule.
+* 类似Laravel验证的API。
+* 数组验证。
+* 支持多个文件的`$_FILES`验证。
+* 自定义属性别名。
+* 自定义验证消息。
+* 自定义规则。
 
 ## Requirements
 
-* PHP 7.0 or higher
+* php >= 7.0
 * Composer for installation
 
 ## Quick Start
@@ -26,1138 +26,790 @@ composer require "nelsonkti/validation"
 ```
 
 #### Usage
-
-There are two ways to validating data with this library. Using `make` to make validation object,
-then validate it using `validate`. Or just use `validate`.
-Examples:
-
-Using `make`:
-
-```php
-<?php
-
-require('vendor/autoload.php');
-
-use Nelsonkti\Validation\Validator;
-
-$validator = new Validator;
-
-// make it
-$validation = $validator->make($_POST + $_FILES, [
-    'name'                  => 'required',
-    'email'                 => 'required|email',
-    'password'              => 'required|min:6',
-    'confirm_password'      => 'required|same:password',
-    'avatar'                => 'required|uploaded_file:0,500K,png,jpeg',
-    'skills'                => 'array',
-    'skills.*.id'           => 'required|numeric',
-    'skills.*.percentage'   => 'required|numeric'
-]);
-
-// then validate
-$validation->validate();
-
-if ($validation->fails()) {
-    // handling errors
-    $errors = $validation->errors();
-    echo "<pre>";
-    print_r($errors->firstOfAll());
-    echo "</pre>";
-    exit;
-} else {
-    // validation passes
-    echo "Success!";
-}
-
+验证器层
+验证器目录结构
+```text
+├── Service
+├── Validator
+    ├── CodeMerch
+        ├── CodeMerchNoticeValidator
 ```
 
-or just `validate` it:
-
+创建验证器类
+创建一个独立的数据验证器类，用于处理相应场景下的数据验证逻辑。命名规则为***Validator，并继承自AbstractValidator。在该验证器类中，按照命名规则规定命名验证规则方法，例如，对于名为DemoValidator的验证器类，应包括rulesWhenCreate、rulesWhenUpdate...等方法。
 ```php
-<?php
-
-require('vendor/autoload.php');
-
-use Nelsonkti\Validation\Validator;
-
-$validator = new Validator;
-
-$validation = $validator->validate($_POST + $_FILES, [
-    'name'                  => 'required',
-    'email'                 => 'required|email',
-    'password'              => 'required|min:6',
-    'confirm_password'      => 'required|same:password',
-    'avatar'                => 'required|uploaded_file:0,500K,png,jpeg',
-    'skills'                => 'array',
-    'skills.*.id'           => 'required|numeric',
-    'skills.*.percentage'   => 'required|numeric'
-]);
-
-if ($validation->fails()) {
-	// handling errors
-	$errors = $validation->errors();
-	echo "<pre>";
-	print_r($errors->firstOfAll());
-	echo "</pre>";
-	exit;
-} else {
-	// validation passes
-	echo "Success!";
-}
-
-```
-
-In this case, 2 examples above will output the same results.
-
-But with `make` you can setup something like custom invalid message, custom attribute alias, etc before validation running.
-
-### Attribute Alias
-
-By default we will transform your attribute into more readable text. For example `confirm_password` will be displayed as `Confirm password`.
-But you can set it anything you want with `setAlias` or `setAliases` method.
-
-Example:
-
-```php
-$validator = new Validator;
-
-// To set attribute alias, you should use `make` instead `validate`.
-$validation->make([
-	'province_id' => $_POST['province_id'],
-	'district_id' => $_POST['district_id']
-], [
-	'province_id' => 'required|numeric',
-	'district_id' => 'required|numeric'
-]);
-
-// now you can set aliases using this way:
-$validation->setAlias('province_id', 'Province');
-$validation->setAlias('district_id', 'District');
-
-// or this way:
-$validation->setAliases([
-	'province_id' => 'Province',
-	'district_id' => 'District'
-]);
-
-// then validate it
-$validation->validate();
-
-```
-
-Now if `province_id` value is empty, error message would be 'Province is required'.
-
-## Custom Validation Message
-
-Before register/set custom messages, here are some variables you can use in your custom messages:
-
-* `:attribute`: will replaced into attribute alias.
-* `:value`: will replaced into stringify value of attribute. For array and object will replaced to json.
-
-And also there are several message variables depends on their rules.
-
-Here are some ways to register/set your custom message(s):
-
-#### Custom Messages for Validator
-
-With this way, anytime you make validation using `make` or `validate` it will set your custom messages for it.
-It is useful for localization.
-
-To do this, you can set custom messages as first argument constructor like this:
-
-```php
-$validator = new Validator([
-	'required' => ':attribute harus diisi',
-	'email' => ':email tidak valid',
-	// etc
-]);
-
-// then validation belows will use those custom messages
-$validation_a = $validator->validate($dataset_a, $rules_for_a);
-$validation_b = $validator->validate($dataset_b, $rules_for_b);
-
-```
-
-Or using `setMessages` method like this:
-
-```php
-$validator = new Validator;
-$validator->setMessages([
-	'required' => ':attribute harus diisi',
-	'email' => ':email tidak valid',
-	// etc
-]);
-
-// now validation belows will use those custom messages
-$validation_a = $validator->validate($dataset_a, $rules_for_dataset_a);
-$validation_b = $validator->validate($dataset_b, $rules_for_dataset_b);
-
-```
-
-#### Custom Messages for Validation
-
-Sometimes you may want to set custom messages for specific validation.
-To do this you can set your custom messages as 3rd argument of `$validator->make` or `$validator->validate` like this:
-
-```php
-$validator = new Validator;
-
-$validation_a = $validator->validate($dataset_a, $rules_for_dataset_a, [
-	'required' => ':attribute harus diisi',
-	'email' => ':email tidak valid',
-	// etc
-]);
-
-```
-
-Or you can use `$validation->setMessages` like this:
-
-```php
-$validator = new Validator;
-
-$validation_a = $validator->make($dataset_a, $rules_for_dataset_a);
-$validation_a->setMessages([
-	'required' => ':attribute harus diisi',
-	'email' => ':email tidak valid',
-	// etc
-]);
-
-...
-
-$validation_a->validate();
-```
-
-#### Custom Message for Specific Attribute Rule
-
-Sometimes you may want to set custom message for specific rule attribute.
-To do this you can use `:` as message separator or using chaining methods.
-
-Examples:
-
-```php
-$validator = new Validator;
-
-$validation_a = $validator->make($dataset_a, [
-	'age' => 'required|min:18'
-]);
-
-$validation_a->setMessages([
-	'age:min' => '18+ only',
-]);
-
-$validation_a->validate();
-```
-
-Or using chaining methods:
-
-```php
-$validator = new Validator;
-
-$validation_a = $validator->make($dataset_a, [
-	'photo' => [
-		'required',
-		$validator('uploaded_file')->fileTypes('jpeg|png')->message('Photo must be jpeg/png image')
-	]
-]);
-
-$validation_a->validate();
-```
-
-## Translation
-
-Translation is different with custom messages.
-Translation may needed when you use custom message for rule `in`, `not_in`, `mimes`, and `uploaded_file`.
-
-For example if you use rule `in:1,2,3` we will set invalid message like "The Attribute only allows '1', '2', or '3'"
-where part "'1', '2', or '3'" is comes from ":allowed_values" tag.
-So if you have custom Indonesian message ":attribute hanya memperbolehkan :allowed_values",
-we will set invalid message like "Attribute hanya memperbolehkan '1', '2', or '3'" which is the "or" word is not part of Indonesian language.
-
-So, to solve this problem, we can use translation like this:
-
-```php
-// Set translation for words 'and' and 'or'.
-$validator->setTranslations([
-    'and' => 'dan',
-    'or' => 'atau'
-]);
-
-// Set custom message for 'in' rule
-$validator->setMessage('in', ":attribute hanya memperbolehkan :allowed_values");
-
-// Validate
-$validation = $validator->validate($inputs, [
-    'nomor' => 'in:1,2,3'
-]);
-
-$message = $validation->errors()->first('nomor'); // "Nomor hanya memperbolehkan '1', '2', atau '3'"
-```
-
-> Actually, our built-in rules only use words 'and' and 'or' that you may need to translates.
-
-## Working with Error Message
-
-Errors messages are collected in `Nelsonkti\Validation\ErrorBag` object that you can get it using `errors()` method.
-
-```php
-$validation = $validator->validate($inputs, $rules);
-
-$errors = $validation->errors(); // << ErrorBag
-```
-
-Now you can use methods below to retrieves errors messages:
-
-#### `all(string $format = ':message')`
-
-Get all messages as flatten array.
-
-Examples:
-
-```php
-$messages = $errors->all();
-// [
-//     'Email is not valid email',
-//     'Password minimum 6 character',
-//     'Password must contains capital letters'
-// ]
-
-$messages = $errors->all('<li>:message</li>');
-// [
-//     '<li>Email is not valid email</li>',
-//     '<li>Password minimum 6 character</li>',
-//     '<li>Password must contains capital letters</li>'
-// ]
-```
-
-#### `firstOfAll(string $format = ':message', bool $dotNotation = false)`
-
-Get only first message from all existing keys.
-
-Examples:
-
-```php
-$messages = $errors->firstOfAll();
-// [
-//     'email' => Email is not valid email',
-//     'password' => 'Password minimum 6 character',
-// ]
-
-$messages = $errors->firstOfAll('<li>:message</li>');
-// [
-//     'email' => '<li>Email is not valid email</li>',
-//     'password' => '<li>Password minimum 6 character</li>',
-// ]
-```
-
-Argument `$dotNotation` is for array validation.
-If it is `false` it will return original array structure, if it `true` it will return flatten array with dot notation keys.
-
-For example:
-
-```php
-$messages = $errors->firstOfAll(':message', false);
-// [
-//     'contacts' => [
-//          1 => [
-//              'email' => 'Email is not valid email',
-//              'phone' => 'Phone is not valid phone number'
-//          ],
-//     ],
-// ]
-
-$messages = $errors->firstOfAll(':message', true);
-// [
-//     'contacts.1.email' => 'Email is not valid email',
-//     'contacts.1.phone' => 'Email is not valid phone number',
-// ]
-```
-
-#### `first(string $key)`
-
-Get first message from given key. It will return `string` if key has any error message, or `null` if key has no errors.
-
-For example:
-
-```php
-if ($emailError = $errors->first('email')) {
-    echo $emailError;
+/**
+ * 测试验证器
+ *
+ */
+
+namespace common\Validator;
+
+use Nelsonkti\Validation\Validators\AbstractValidator;
+
+class DemoValidator extends AbstractValidator
+{
+  public function rulesWhenCreate(): array
+  {
+    return [
+      'rules' => [
+          'username' => 'required|string|min:5',
+          'page' => 'numeric|default:5',
+       	 ],
+      ];
+  }
+
+  /**
+   * 默认自定义错误消息
+   *
+   * @return array
+   */
+  public function messages(): array
+  {
+    return [
+        'required' => '该:attribute必填',
+      ];
+  }
+
+
+  /**
+   * 默认自定义属性名称
+   *
+   * @return array
+   */
+  public function attributes(): array
+  {
+    return [
+        'username' => '用户名',
+      ];
+  }
 }
 ```
 
-#### `toArray()`
 
-Get all messages grouped by it's keys.
-
-For example:
-
-```php
-$messages = $errors->toArray();
-// [
-//     'email' => [
-//         'Email is not valid email'
-//     ],
-//     'password' => [
-//         'Password minimum 6 character',
-//         'Password must contains capital letters'
-//     ]
-// ]
-```
-
-#### `count()`
-
-Get count messages.
-
-#### `has(string $key)`
-
-Check if given key has an error. It returns `bool` if a key has an error, and otherwise.
-
-
-## Getting Validated, Valid, and Invalid Data
-
-For example you have validation like this:
+语言切换
+在组件中，默认采用中文作为消息提示的语言。然而，如果需要切换为英文错误提示，可以通过将语言设置为"en"来实现。
+例如，英文提示可能类似于："The 用户名 is required"，而中文提示则为："用户名是必填的"。
 
 ```php
-$validation = $validator->validate([
-    'title' => 'Lorem Ipsum',
-    'body' => 'Lorem ipsum dolor sit amet ...',
-    'published' => null,
-    'something' => '-invalid-'
-], [
-    'title' => 'required',
-    'body' => 'required',
-    'published' => 'default:1|required|in:0,1',
-    'something' => 'required|numeric'
-]);
+
+class DemoValidator extends AbstractValidator
+{
+  
+  public $language = 'en';
+
+  public function rulesWhenCreate(): array
+  {
+    return [
+      'rules' => [
+            'name'                  => 'required',
+            'email'                 => 'required|email',
+            'password'              => 'required|min:6',
+            'confirm_password'      => 'required|same:password',
+            'avatar'                => 'required|uploaded_file:0,500K,png,jpeg',
+            'skills'                => 'array',
+            'skills.*.id'           => 'required|numeric',
+            'skills.*.percentage'   => 'required|numeric'
+      ]
+  }
+}
+  
 ```
 
-You can get validated data, valid data, or invalid data using methods in example below:
+
+全局错误消息、属性名称
+为了提高代码的复用性和可维护性，建议在验证器的验证方法中共用一个messages和attributes变量。这样做可以使得验证方法更通用、易维护。
+将:attribute理解为变量，并将其替换为属性或属性别名，使得验证方法更通用、易维护。
+如：当验证username参数时，那么验证错误提示：该用户名必填。
+```php
+class DemoValidator extends AbstractValidator
+{
+
+  public function rulesWhenCreate(): array
+  {
+    return [
+      'rules' => [
+          'username' => 'required|string|min:5',
+          'page' => 'numeric|default:5',
+          ],
+      ];
+  }
+
+  public function rulesWhenUpdate()
+  {
+    return [
+        'rules' => [
+            'username' => 'required|string|min:5',
+            'page' => 'numeric|default:5',
+        	],
+      ];
+  }
+
+  /**
+   * 默认自定义错误消息
+   *
+   * @return array
+   */
+  public function messages(): array
+  {
+    return [
+        'required' => '该:attribute必填。',
+      ];
+  }
+  
+  /**
+   * 默认自定义属性名称
+   *
+   * @return array
+   */
+  public function attributes(): array
+  {
+    return [
+        'username' => '用户名',
+      ];
+  }
+
+}
+```
+
+局部消息、属性
+为了增强验证器的扩展能力，考虑到业务可能存在相同字段需要不同提示的情况，建议引入局部消息和属性的概念。这样可以按照优先级进行提示选择，优先使用局部消息和属性，其次是全局设定，最后是组件默认。
+验证消息和属性的等级顺序为：局部 > 全局 > 组件默认。如果定义了局部消息或属性，则优先采用局部定义。
+如：当验证username参数时，那么验证错误提示：该商家名称参数缺少。
 
 ```php
-$validatedData = $validation->getValidatedData();
-// [
-//     'title' => 'Lorem Ipsum',
-//     'body' => 'Lorem ipsum dolor sit amet ...',
-//     'published' => '1' // notice this
-//     'something' => '-invalid-'
-// ]
+class DemoValidator extends AbstractValidator
+{
+  public function rulesWhenCreate(): array
+  {
+    // 局部  messages 和 attributes
+    return [
+        'rules' => [
+            'username' => 'required|string|min:5',
+            'page' => 'numeric|default:5',
+        ],
+        'messages' => [
+        		'required' => '该:attribute参数缺少',
+        ],
+        'attributes' => [
+         	 'username' => '商家名称',
+        ],
+      ];
+  }
 
-$validData = $validation->getValidData();
-// [
-//     'title' => 'Lorem Ipsum',
-//     'body' => 'Lorem ipsum dolor sit amet ...',
-//     'published' => '1'
-// ]
+  public function rulesWhenUpdate()
+  {
+    // 局部  messages 和 attributes
+    return [
+        'rules' => [
+            'username' => 'required|string|min:5',
+            'page' => 'numeric|default:5',
+        ],
+        'messages' => [
+            'required' => '该:attribute必填',
+        ],
+        'attributes' => [
+            'username' => '用户',
+        ],
+      ];
+  }
 
-$invalidData = $validation->getInvalidData();
-// [
-//     'something' => '-invalid-'
-// ]
+  /**
+   * 默认自定义错误消息 【全局】
+   *
+   * @return array
+   */
+  public function messages(): array
+  {
+    return [
+    		  'required' => '该:attribute必填',
+      ];
+  }
+  
+  /**
+   * 默认自定义属性名称 【全局】
+   *
+   * @return array
+   */
+  public function attributes(): array
+  {
+    return [
+          'username' => '用户名',
+      ];
+  }
+
+}
 ```
 
-## Available Rules
 
-> Click to show details.
+在控制器中使用验证器
+在控制器中调用验证器类进行数据验证：
+使用业务验证器DemoValidator进行验证时，可以通过调用validate方法，传入参数$param进行数据验证。对于create操作，底层调用验证器的rulesWhenCreate方法进行验证。
+```php
+class DemoController extends Controller
+{
+  public function actionCreate()
+  {
+    $param = Yii::$app->request->post();
 
-<details><summary><strong>required</strong></summary>
+    DemoValidator::create()->validate('create', $param);
 
-The field under this validation must be present and not 'empty'.
+    (new DemoService())->create($param);
 
-Here are some examples:
+    // Proceed with user creation logic
+    return $this->asJson(['success' => true]);
+  }
 
-| Value         | Valid |
-| ------------- | ----- |
-| `'something'` | true  |
-| `'0'`         | true  |
-| `0`           | true  |
-| `[0]`         | true  |
-| `[null]`      | true  |
-| null          | false |
-| []            | false |
-| ''            | false |
 
-For uploaded file, `$_FILES['key']['error']` must not `UPLOAD_ERR_NO_FILE`.
+  public function actionUpdate()
+  {
+    $param = Yii::$app->request->post();
 
-</details>
+    DemoValidator::create()->validate('update', $param);
 
-<details><summary><strong>required_if</strong>:another_field,value_1,value_2,...</summary>
+    (new DemoService())->update($param);
 
-The field under this rule must be present and not empty if the anotherfield field is equal to any value.
+    // Proceed with user creation logic
+    return Response::successMsg(['success' => true]);
+  }
+}
+```
+强制报错
+验证器DemoValidator默认采用强制报错机制，框架会全局捕获这些错误并进行处理，返回符合API报错格式的错误信息。这种设计有助于提高整体规范性，降低维护成本，减少开发人员的工作量，避免重复编写相似的错误处理代码。
+全局报错目前尚未处理
+```php 
+ public function actionUpdate()
+  {
+    $param = Yii::$app->request->post();
 
-For example `required_if:something,1,yes,on` will be required if `something` value is one of `1`, `'1'`, `'yes'`, or `'on'`.
+    DemoValidator::create()->validate('update', $param);
 
-</details>
+    (new DemoService())->update($param);
 
-<details><summary><strong>required_unless</strong>:another_field,value_1,value_2,...</summary>
+    // Proceed with user creation logic
+    return Response::successMsg(['success' => true]);
+  }
+```
 
-The field under validation must be present and not empty unless the anotherfield field is equal to any value.
+非强制报错
+除了默认的强制报错机制，我们还考虑了组件兼容非强制报错的情况。我们对validate方法进行了优化，允许传入参数false，这样开发人员可以通过调用firstErrorMessage方法获取到验证错误信息中的第一条报错信息，实现了更灵活的错误处理方式。
+```php
+ public function actionUpdate()
+  {
+    $param = Yii::$app->request->post();
 
-</details>
+    DemoValidator::create()->validate('update', $param, false);
+    
+    if ($validate->getValidator()->fails()) {
+       return Response::error(422, $validate->getValidator()->firstErrorMessage());
+    }
+    
+    (new DemoService())->update($param);
 
-<details><summary><strong>required_with</strong>:field_1,field_2,...</summary>
+    // Proceed with user creation logic
+    return Response::successMsg(['success' => true]);
+  }
+```
 
-The field under validation must be present and not empty only if any of the other specified fields are present.
+获取已验证数据、有效数据或无效数据
+```php
+ public function rulesWhenUpdate()
+  {
+    return [
+        'rules' => [
+            'title' => 'Lorem Ipsum',
+            'body' => 'Lorem ipsum dolor sit amet ...',
+            'published' => null,
+            'something' => '-invalid-'
+        ]
+      ];
+  }
 
-</details>
 
-<details><summary><strong>required_without</strong>:field_1,field_2,...</summary>
 
-The field under validation must be present and not empty only when any of the other specified fields are not present.
+  $validate = $validate->validate('update', $data);
 
-</details>
+  // 获取已验证的数据
+  $res = $validate->getValidatedData();
+  // [
+  //     'title' => 'Lorem Ipsum',
+  //     'body' => 'Lorem ipsum dolor sit amet ...',
+  //     'published' => '1' // notice this
+  //     'something' => '-invalid-'
+  // ]
 
-<details><summary><strong>required_with_all</strong>:field_1,field_2,...</summary>
+  // 获取有效数据
+  $res = $validate->getValidData();
+  // [
+  //     'title' => 'Lorem Ipsum',
+  //     'body' => 'Lorem ipsum dolor sit amet ...',
+  //     'published' => '1'
+  // ]
 
-The field under validation must be present and not empty only if all of the other specified fields are present.
+  // 获取无效数据
+  $res = $validate->getInvalidData();
+  // [
+  //     'something' => '-invalid-'
+  // ]
+```
 
-</details>
+## 验证器自定义消息
+### 自定义验证消息
+为了提高验证器的灵活性和可定制性，我们引入了两个重要方法。首先是attributes方法，通过该方法，我们可以定义属性别名，将属性名映射为更具有业务意义的别名。其次是messages方法，允许我们自定义字段验证消息，以替换组件默认的消息。在自定义消息中，我们可以使用:attribute占位符，该占位符会被替换为属性别名，以使错误信息更具有可读性和业务意义。这样的设计能够使验证器更符合特定项目需求，同时提高代码的可维护性和易用性。
+```php
+/**
+ * 默认自定义错误消息
+ *
+ * @return array
+ */
+  public function messages(): array
+  {
+    return [
+        'required' => '该:attribute必填',
+      ];
+  }
 
-<details><summary><strong>required_without_all</strong>:field_1,field_2,...</summary>
+/**
+ * 默认自定义属性名称
+ *
+ * @return array
+ */
+  public function attributes(): array
+  {
+    return [
+        'username' => '用户名',
+      ];
+  }
+```
 
-The field under validation must be present and not empty only when all of the other specified fields are not present.
+### 特定属性规则的自定义消息
+有时，您可能只想为特定字段指定自定义错误信息。您可以属性名称后使用:标记来实现。例如：
+```php
+/**
+ * 默认自定义错误消息
+ *
+ * @return array
+ */
+  public function messages(): array
+  {
+    return [
+        'username:required' => '该用户名是必填',
+      ];
+  }
+```
 
-</details>
+### 数组的属性值判断
+验证表单的输入为数组的字段也不再难了。 你可以使用.方法来验证数组中的属性。例如
+```php 
+  public function rulesWhenCreate(): array
+  {
+    return [
+      'rules' => [
+            'skills.*.id'           => 'required|numeric',
+            'skills.*.percentage'   => 'required|numeric'
+      ]
+  }
+}
+```
 
-<details><summary><strong>uploaded_file</strong>:min_size,max_size,extension_a,extension_b,...</summary>
 
-This rule will validate data from `$_FILES`.
-Field under this rule must be follows rules below to be valid:
+## 规则
+### required
+此验证下的字段必须存在且不能为“空”。
 
-* `$_FILES['key']['error']` must be `UPLOAD_ERR_OK` or `UPLOAD_ERR_NO_FILE`. For `UPLOAD_ERR_NO_FILE` you can validate it with `required` rule.
-* If min size is given, uploaded file size **MUST NOT** be lower than min size.
-* If max size is given, uploaded file size **MUST NOT** be higher than max size.
-* If file types is given, mime type must be one of those given types.
+e.g
 
-Here are some example definitions and explanations:
+|Value|	Valid|
+|---|---|
+|'something'|	true|
+|'0'|	true|
+|0	|true|
+|[0]	|true|
+|[null]|	true|
+|null|	false|
+|[]|	false|
+|''	|false|
 
-* `uploaded_file`: uploaded file is optional. When it is not empty, it must be `ERR_UPLOAD_OK`.
-* `required|uploaded_file`: uploaded file is required, and it must be `ERR_UPLOAD_OK`.
-* `uploaded_file:0,1M`: uploaded file size must be between 0 - 1 MB, but uploaded file is optional.
-* `required|uploaded_file:0,1M,png,jpeg`: uploaded file size must be between 0 - 1MB and mime types must be `image/jpeg` or `image/png`.
+### required_if
+required_if：值_1，值_2，...
 
-Optionally, if you want to have separate error message between size and type validation.
-You can use `mimes` rule to validate file types, and `min`, `max`, or `between` to validate it's size.
+如果字段等于任何值，则此规则下的字段必须存在且不为空。
+```php
+// 当 is_companion 等于 是，则 companion_card 为必须，
+// 当 is_companion 等于 否，则 companion_card 为非必须
+'is_companion' => 'string|in:是,否',
+'companion_card' => 'required_if:is_companion,是|string',
+```
 
-For multiple file upload, PHP will give you undesirable array `$_FILES` structure ([here](http://php.net/manual/en/features.file-upload.multiple.php#53240) is the topic). So we make `uploaded_file` rule to automatically resolve your `$_FILES` value to be well-organized array structure. That means, you cannot only use `min`, `max`, `between`, or `mimes` rules to validate multiple file upload. You should put `uploaded_file` just to resolve it's value and make sure that value is correct uploaded file value.
 
-For example if you have input files like this:
+### required_unless
 
+required_unless：值_1，值_2，...
+
+如果字段的值不等于任何 value 值，则验证的字段必须存在且不为空。这也意味着，除非字段等于任何 value 值，否则必须在请求数据中包含字段。如果 value 的值为 null （required_unless:name,null），则必须验证该字段，除非比较字段是 null 或比较字段不存在于请求数据中。
+```php
+// 当 is_companion 等于 是，则 companion_card 为必须，
+// 当 is_companion 等于 否，则 companion_card 为非必须
+'is_companion' => 'string|in:是,否',
+'companion_card' => 'required_if:is_companion,否|string',
+```
+
+### required_with
+required_with:foo,bar,…
+
+仅当任何其他指定字段存在且不为空时，才需要验证字段存在且不为空。
+```php
+// 当actors数组存在值时，code 必须存在
+'actors' => 'required|array|min:1',
+'actors.*.code' => 'required_with:actors|string|min:1',
+```
+
+### required_with_all
+
+required_with_all:foo,bar,…
+
+仅当所有其他指定字段存在且不为空时，才需要验证字段存在且不为空。
+```php 
+'actors' => 'required|array|min:1',
+'is_companion' => 'required|array|min:1',
+'companion_card' => 'required_with_all:actors,is_companion|string|min:1',
+```
+### required_without
+required_without:foo,bar,…
+
+验证的字段仅在任一其他指定字段为空或不存在时，必须存在且不为空。
+
+### required_without_all
+required_without_all:foo,bar,…
+
+验证的字段仅在所有其他指定字段为空或不存在时，必须存在且不为空。
+
+### uploaded_file
+uploaded_file：min_size,max_size,extension_a,extension_b,...
+
+该规则将验证来自$_FILES的数据。符合此规则的字段必须遵循以下规则才能被视为有效：
+
+$_FILES['key']['error'] 必须是 UPLOAD_ERR_OK 或 UPLOAD_ERR_NO_FILE。对于UPLOAD_ERR_NO_FILE,您可以使用 required 规则进行验证。
+如果指定了最小尺寸，上传的文件尺寸必须不小于最小尺寸。
+如果指定了最大尺寸，上传的文件尺寸必须不大于最大尺寸。
+如果给定文件类型，MIME 类型必须是给定类型之一。
+以下是一些示例定义和解释：
+
+uploaded_file: 上传文件是可选的。当它不为空时，它必须为 ERR_UPLOAD_OK。
+required|uploaded_file: 上传文件是必需的，必须为 ERR_UPLOAD_OK。
+uploaded_file:0,1M: 上传文件尺寸必须介于 0 到 1 MB 之间，但上传文件是可选的。
+required|uploaded_file:0,1M,png,jpeg: 上传文件尺寸必须介于 0 到 1MB，MIME 类型必须是 image/jpeg 或 image/png。
+另外，如果您想在尺寸和类型验证之间有不同的错误消息，您可以使用 mimes 规则验证文件类型，并使用 min、max 或 between 验证其尺寸。
+
+对于多文件上传，PHP 将为您提供不理想的数组 $_FILES 结构（这里是主题）。因此，我们制定了 uploaded_file 规则，以自动将您的 $_FILES 值解析为良好组织的数组结构。这意味着，您不能仅使用 min、max、between 或 mimes 规则来验证多文件上传。您应该仅将 uploaded_file 放置在其中以解析其值并确保该值是正确的上传文件值。
+
+例如，如果您有如下输入文件：
 ```html
 <input type="file" name="photos[]"/>
 <input type="file" name="photos[]"/>
 <input type="file" name="photos[]"/>
 ```
-
-You can  simply validate it like this:
-
-```php
-$validation = $validator->validate($_FILES, [
-    'photos.*' => 'uploaded_file:0,2M,jpeg,png'
-]);
-
-// or
-
-$validation = $validator->validate($_FILES, [
-    'photos.*' => 'uploaded_file|max:2M|mimes:jpeg,png'
-]);
+您可以简单地像这样进行验证：
+```php 
+  public function rulesWhenCreate(): array
+  {
+    return [
+      'rules' => [
+         'photos.*' => 'uploaded_file:0,2M,jpeg,png'
+      ]
+  }
 ```
 
-Or if you have input files like this:
-
+或者
+```php 
+  public function rulesWhenCreate(): array
+  {
+    return [
+      'rules' => [
+          'photos.*' => 'uploaded_file|max:2M|mimes:jpeg,png'
+      ]
+  }
+```
+或者如果您有如下输入文件：
 ```html
 <input type="file" name="images[profile]"/>
 <input type="file" name="images[cover]"/>
 ```
-
-You can validate it like this:
-
-```php
-$validation = $validator->validate($_FILES, [
-    'images.*' => 'uploaded_file|max:2M|mimes:jpeg,png',
-]);
-
-// or
-
-$validation = $validator->validate($_FILES, [
-    'images.profile' => 'uploaded_file|max:2M|mimes:jpeg,png',
-    'images.cover' => 'uploaded_file|max:5M|mimes:jpeg,png',
-]);
+您可以像这样进行验证：
+```php 
+  public function rulesWhenCreate(): array
+  {
+    return [
+      'rules' => [
+  	  'images.*' => 'uploaded_file|max:2M|mimes:jpeg,png',
+      ]
+  }
 ```
 
-Now when you use `getValidData()` or `getInvalidData()` you will get well array structure just like single file upload.
+或者
+```php 
+  public function rulesWhenCreate(): array
+  {
+    return [
+      'rules' => [
+  	     'images.profile' => 'uploaded_file|max:2M|mimes:jpeg,png',
+    	     'images.cover' => 'uploaded_file|max:5M|mimes:jpeg,png',
+      ]
+  }
+```
+现在当您使用 getValidData() 或 getInvalidData() 时，您将获得良好的数组结构，就像单文件上传一样。
 
-</details>
+### mimes
+mimes:foo,bar,…
 
-<details><summary><strong>mimes</strong>:extension_a,extension_b,...</summary>
+验证的文件必须具有与列出的扩展名之一对应的 MIME 类型。
+MIME 规则的基本用法
+```php
+'photo' => 'mimes:jpg,bmp,png'
+```
+尽管您只需要指定扩展名，但该规则实际上通过读取文件内容并猜测其 MIME 类型来验证文件的 MIME 类型。
 
-The `$_FILES` item under validation must have a MIME type corresponding to one of the listed extensions.
+default
+这是一个特殊规则，它不对任何内容进行验证。它只是在您的属性为空或不存在时为其设置默认值。
 
-</details>
-
-<details><summary><strong>default/defaults</strong></summary>
-
-This is special rule that doesn't validate anything.
-It just set default value to your attribute if that attribute is empty or not present.
-
-For example if you have validation like this
+例如，如果您有如下验证：
 
 ```php
-$validation = $validator->validate([
-    'enabled' => null
-], [
-    'enabled' => 'default:1|required|in:0,1'
-    'published' => 'default:0|required|in:0,1'
-]);
+ 
+  public function rulesWhenCreate(): array
+  {
+    return [
+      'rules' => [
+  		'enabled' => 'default:1|required|in:0,1'
+    		'published' => 'default:0|required|in:0,1'
+      ]
+  }
 
-$validation->passes(); // true
 
-// Get the valid/default data
-$valid_data = $validation->getValidData();
+// 调用验证
+$data = [];
+$validate = $validate->validate('demo', $data);
 
-$enabled = $valid_data['enabled'];
-$published = $valid_data['published'];
+// 获取有效/默认数据
+$valid_data = $validate->getValidData();
+
+$enabled = $valid_data['enabled']; // 1
+$published = $valid_data['published']; // 0
+```
+验证通过，因为我们为 enabled 和 published 设置了默认值为 1 和 0，这是有效的。然后，我们可以获取有效/默认数据。
+
+### email
+验证的字段必须符合 e-mail 地址格式。
+
+### uppercase
+验证字段必须为大写。
+
+### lowercase
+验证的字段必须是小写的。
+
+### json
+验证的字段必须是一个有效的 JSON 字符串。
+
+### alpha
+待验证字段必须是包含在 \p{L} 和 \p{M} 中的 Unicode 字母字符。
+为了将此验证规则限制在 ASCII 范围内的字符（a-z 和 A-Z），你可以为验证规则提供 ascii 选项：
+'username' => 'alpha:ascii',
+
+### numeric
+需要验证的字段必须是数字类型。
+'games' => 'required|numeric',
+
+### alpha_num
+被验证的字段必须完全是 Unicode 字母数字字符中的 \p{L}, \p{M} 和 \p{N}。
+为了将此验证规则限制在 ASCII 范围内的字符（a-z 和 A-Z），你可以为验证规则提供 ascii 选项：
+'username' => 'alpha_num:ascii',
+
+### alpha_dash
+被验证的字段必须完全是 Unicode 字母数字字符中的 \p{L}、\p{M}、\p{N}，以及 ASCII 破折号（-）和 ASCII 下划线（_）。
+为了将此验证规则限制在 ASCII 范围内的字符（a-z 和 A-Z），你可以为验证规则提供 ascii 选项：
+'username' => 'alpha_dash:ascii',
+
+### alpha_spaces
+此规则下的字段可能包含字母字符和空格。
+
+### in
+in:foo,bar,…
+验证字段必须包含在给定的值列表中。由于此规则通常要求你 implode 数组，因此可以使用 Rule::in 方法来流畅地构造规则:
+'status' => 'in:1,2,10',
+
+### not_in
+not_in:foo,bar,…
+验证的字段不能包含在给定值列表中
+'status' => 'not_in:3,5',
+
+### min
+min:value
+验证的字段的值必须大于或等于最小值 value。字符串、数字、数组和文件的处理方式与 size 规则相同。
+'status' => 'required|numeric|min:1',
+
+### max
+max:value
+验证的字段的值必须小于或等于最大值 value。字符串、数字、数组和文件的处理方式与 size 规则相同。
+'status' => 'required|numeric|max:10',
+
+### between
+between:min,max
+待验证字段值的大小必须介于给定的最小值和最大值（含）之间。字符串、数字、数组和文件的计算方式都使用 size 方法。
+'status' => 'required|numeric|between:1,10',
+
+### digits
+digits:value
+验证的整数必须具有确切长度 value 。
+
+### digits_between
+digits_between:min,max
+验证的整数长度必须在给定的 min 和 max 之间。
+
+### url
+验证字段必须为有效的 URL。
+
+### integer
+验证的字段必须是一个整数。
+'id'=>'nullable|integer|min:1',
+
+### boolean
+验证的字段必须可以转换为 Boolean 类型。 可接受的输入为 true, false, 1, 0, 「1」, 和 「0」。
+'opened' => 'nullable|boolean',
+
+### ip
+验证的字段必须是一个 IP 地址。
+
+### ipv4
+验证的字段必须是一个 IPv4 地址。
+
+### ipv6
+验证的字段必须是一个 IPv6 地址。
+
+### extension
+extension:扩展名A,扩展名B,...
+此规则下的字段必须以列出的扩展名之一对应的扩展名结尾。
+这对于验证给定路径或 URL 的文件类型非常有用。对于验证上传的文件类型应使用 mimes 规则。
+
+### array
+待验证字段必须是有效的 PHP 数组。
+当向 array 规则提供附加值时，输入数组中的每个键都必须出现在提供给规则的值列表中。在以下示例中，输入数组中的 admin 键无效，因为它不包含在提供给 array 规则的值列表中：
+
+```php
+ 
+  public function rulesWhenCreate(): array
+  {
+    return [
+      'rules' => [
+          'user' => 'array:name,username',
+      ]
+  }
+
+      
+
+$input = [
+    'user' => [
+        'name' => 'Taylor Otwell',
+        'username' => 'taylorotwell',
+        'admin' => true,
+    ],
+];
 ```
 
-Validation passes because we sets default value for `enabled` and `published` to `1` and `0` which is valid. Then we can get the valid/default data.
-
-</details>
-
-<details><summary><strong>email</strong></summary>
-
-The field under this validation must be valid email address.
-
-</details>
-
-<details><summary><strong>uppercase</strong></summary>
-
-The field under this validation must be valid uppercase.
-
-</details>
-
-<details><summary><strong>lowercase</strong></summary>
-
-The field under this validation must be valid lowercase.
-
-</details>
-
-<details><summary><strong>json</strong></summary>
-
-The field under this validation must be valid JSON string.
-
-</details>
-
-<details><summary><strong>alpha</strong></summary>
-
-The field under this rule must be entirely alphabetic characters.
-
-</details>
-
-<details><summary><strong>numeric</strong></summary>
-
-The field under this rule must be numeric.
-
-</details>
-
-<details><summary><strong>alpha_num</strong></summary>
-
-The field under this rule must be entirely alpha-numeric characters.
-
-</details>
-
-<details><summary><strong>alpha_dash</strong></summary>
-
-The field under this rule may have alpha-numeric characters, as well as dashes and underscores.
-
-</details>
-
-<details><summary><strong>alpha_spaces</strong></summary>
-
-The field under this rule may have alpha characters, as well as spaces.
-
-</details>
-
-<details><summary><strong>in</strong>:value_1,value_2,...</summary>
-
-The field under this rule must be included in the given list of values.
-
-This rule is using `in_array` to check the value.
-By default `in_array` disable strict checking.
-So it doesn't check data type.
-If you want enable strict checking, you can invoke validator like this:
-
-```php
-$validation = $validator->validate($data, [
-    'enabled' => [
-        'required',
-        $validator('in', [true, 1])->strict()
-    ]
-]);
+### same
+给定的字段必须与验证的字段匹配。此规则下的字段值必须与另一个字段值相同。
+```text
+ 
+  public function rulesWhenCreate(): array
+  {
+    return [
+      'rules' => [
+  	   'password' => 'required|min:6',
+           'confirm_password' => 'required|same:password',
+      ]
+  }
 ```
 
-Then 'enabled' value should be boolean `true`, or int `1`.
-
-</details>
-
-<details><summary><strong>not_in</strong>:value_1,value_2,...</summary>
-
-The field under this rule must not be included in the given list of values.
-
-This rule also using `in_array`. You can enable strict checking by invoking validator and call `strict()` like example in rule `in` above.
-
-</details>
-
-<details><summary><strong>min</strong>:number</summary>
-
-The field under this rule must have a size greater or equal than the given number.
-
-For string value, size corresponds to the number of characters. For integer or float value, size corresponds to its numerical value. For an array, size corresponds to the count of the array. If your value is numeric string, you can put `numeric` rule to treat its size by numeric value instead of number of characters.
-
-You can also validate uploaded file using this rule to validate minimum size of uploaded file.
-For example:
-
-```php
-$validation = $validator->validate([
-    'photo' => $_FILES['photo']
-], [
-    'photo' => 'required|min:1M'
-]);
+### regex
+regex:pattern
+验证的字段必须匹配给定的正则表达式。
+在内部，此规则使用 PHP 的 preg_match 函数。指定的模式应遵循 preg_match 所需的相同格式，并且也包括有效的分隔符。例如：
+```php 
+'email' => 'regex:/^.+@.+$/i',
 ```
 
-</details>
-
-<details><summary><strong>max</strong>:number</summary>
-
-The field under this rule must have a size lower or equal than the given number.
-Value size calculated in same way like `min` rule.
-
-You can also validate uploaded file using this rule to validate maximum size of uploaded file.
-For example:
-
-```php
-$validation = $validator->validate([
-    'photo' => $_FILES['photo']
-], [
-    'photo' => 'required|max:2M'
-]);
+### date
+验证字段必须是 strtotime PHP 函数可识别的有效日期。
+```php 
+'birthday' => 'date:Y-m-d',
 ```
 
-</details>
+### accepted
+待验证字段必须是 「yes」  ，「on」 ，1 或 true。这对于验证「服务条款」的接受或类似字段时很有用。
 
-<details><summary><strong>between</strong>:min,max</summary>
+### present
+需要验证的字段必须存在于输入数据中。
 
-The field under this rule must have a size between min and max params.
-Value size calculated in same way like `min` and `max` rule.
+### different
+验证的字段值必须与字段 field 的值不同。
 
-You can also validate uploaded file using this rule to validate size of uploaded file.
-For example:
-
+### after
+验证中的字段必须是给定日期之后的值。日期将被传递给 strtotime PHP 函数中，以便转换为有效的 DateTime .
+e.g：
 ```php
-$validation = $validator->validate([
-    'photo' => $_FILES['photo']
-], [
-    'photo' => 'required|between:1M,2M'
-]);
+'start_date' => 'required|date|after:tomorrow'
+```
+你也可以指定另一个要与日期比较的字段，而不是传递要由 strtotime 处理的日期字符串：
+```php 
+'finish_date' => 'required|date|after:start_date'
 ```
 
-</details>
-
-<details><summary><strong>digits</strong>:value</summary>
-
-The field under validation must be numeric and must have an exact length of `value`.
-
-</details>
-
-<details><summary><strong>digits_between</strong>:min,max</summary>
-
-The field under validation must have a length between the given `min` and `max`.
-
-</details>
-
-<details><summary><strong>url</strong></summary>
-
-The field under this rule must be valid url format.
-By default it check common URL scheme format like `any_scheme://...`.
-But you can specify URL schemes if you want.
-
-For example:
-
-```php
-$validation = $validator->validate($inputs, [
-    'random_url' => 'url',          // value can be `any_scheme://...`
-    'https_url' => 'url:http',      // value must be started with `https://`
-    'http_url' => 'url:http,https', // value must be started with `http://` or `https://`
-    'ftp_url' => 'url:ftp',         // value must be started with `ftp://`
-    'custom_url' => 'url:custom',   // value must be started with `custom://`
-    'mailto_url' => 'url:mailto',   // value must conatin valid mailto URL scheme like `mailto:a@mail.com,b@mail.com`
-    'jdbc_url' => 'url:jdbc',       // value must contain valid jdbc URL scheme like `jdbc:mysql://localhost/dbname`
-]);
-```
-
-> For common URL scheme and mailto, we combine `FILTER_VALIDATE_URL` to validate URL format and `preg_match` to validate it's scheme.
-  Except for JDBC URL, currently it just check a valid JDBC scheme.
-
-</details>
-
-<details><summary><strong>integer</strong></summary>
-The field under t rule must be integer.
-
-</details>
-
-<details><summary><strong>boolean</strong></summary>
-
-The field under this rule must be boolean. Accepted input are `true`, `false`, `1`, `0`, `"1"`, and `"0"`.
-
-</details>
-
-<details><summary><strong>ip</strong></summary>
-
-The field under this rule must be valid ipv4 or ipv6.
-
-</details>
-
-<details><summary><strong>ipv4</strong></summary>
-
-The field under this rule must be valid ipv4.
-
-</details>
-
-<details><summary><strong>ipv6</strong></summary>
-
-The field under this rule must be valid ipv6.
-
-</details>
-
-<details><summary><strong>extension</strong>:extension_a,extension_b,...</summary>
-
-The field under this rule must end with an extension corresponding to one of those listed.
-
-This is useful for validating a file type for a given a path or url. The `mimes` rule should be used for validating uploads.
-
-</details>
-
-<details><summary><strong>array</strong></summary>
-
-The field under this rule must be array.
-
-</details>
-
-<details><summary><strong>same</strong>:another_field</summary>
-
-The field value under this rule must be same with `another_field` value.
-
-</details>
-
-<details><summary><strong>regex</strong>:/your-regex/</summary>
-
-The field under this rule must be match with given regex.
-
-</details>
-
-<details><summary><strong>date</strong>:format</summary>
-
-The field under this rule must be valid date format. Parameter `format` is optional, default format is `Y-m-d`.
-
-</details>
-
-<details><summary><strong>accepted</strong></summary>
-
-The field under this rule must be one of `'on'`, `'yes'`, `'1'`, `'true'`, or `true`.
-
-</details>
-
-<details><summary><strong>present</strong></summary>
-
-The field under this rule must be exists, whatever the value is.
-
-</details>
-
-<details><summary><strong>different</strong>:another_field</summary>
-
-Opposite of `same`. The field value under this rule must be different with `another_field` value.
-
-</details>
-
-<details><summary><strong>after</strong>:tomorrow</summary>
-
-Anything that can be parsed by `strtotime` can be passed as a parameter to this rule. Valid examples include :
-- after:next week
-- after:2016-12-31
-- after:2016
-- after:2016-12-31 09:56:02
-
-</details>
-
-<details><summary><strong>before</strong>:yesterday</summary>
-
-This also works the same way as the [after rule](#after). Pass anything that can be parsed by `strtotime`
-
-</details>
-
-<details><summary><strong>callback</strong></summary>
-
-You can use this rule to define your own validation rule.
-This rule can't be registered using string pipe.
-To use this rule, you should put Closure inside array of rules.
-
-For example:
-
-```php
-$validation = $validator->validate($_POST, [
-    'even_number' => [
-        'required',
-        function ($value) {
-            // false = invalid
-            return (is_numeric($value) AND $value % 2 === 0);
-        }
-    ]
-]);
-```
-
-You can set invalid message by returning a string.
-For example, example above would be:
-
-```php
-$validation = $validator->validate($_POST, [
-    'even_number' => [
-        'required',
-        function ($value) {
-            if (!is_numeric($value)) {
-                return ":attribute must be numeric.";
-            }
-            if ($value % 2 !== 0) {
-                return ":attribute is not even number.";
-            }
-            // you can return true or don't return anything if value is valid
-        }
-    ]
-]);
-```
-
-> Note: `Nelsonkti\Validation\Rules\Callback` instance is binded into your Closure.
-  So you can access rule properties and methods using `$this`.
-
-</details>
-
-<details><summary><strong>nullable</strong></summary>
-
-Field under this rule may be empty.
-
-</details>
-
-## Register/Override Rule
-
-Another way to use custom validation rule is to create a class extending `Nelsonkti\Validation\Rule`.
-Then register it using `setValidator` or `addValidator`.
-
-For example, you want to create `unique` validator that check field availability from database.
-
-First, lets create `UniqueRule` class:
-
-```php
-<?php
-
-use Nelsonkti\Validation\Rule;
-
-class UniqueRule extends Rule
+### before
+待验证字段的值对应的日期必须在给定的日期之前。这个日期将被传递给 PHP 函数 strtotime 以便转化为有效的 DateTime 实例。此外，与 after 规则一致，可以将另外一个待验证的字段作为 date 的值。
+
+### callback
+您可以使用此规则定义自己的验证规则。无法使用字符串管道注册此规则。要使用此规则，应将闭包放置在规则数组内。
+e.g：
+```php 
+public function rulesWhenCreate()
 {
-    protected $message = ":attribute :value has been used";
-
-    protected $fillableParams = ['table', 'column', 'except'];
-
-    protected $pdo;
-
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
-    }
-
-    public function check($value): bool
-    {
-        // make sure required parameters exists
-        $this->requireParameters(['table', 'column']);
-
-        // getting parameters
-        $column = $this->parameter('column');
-        $table = $this->parameter('table');
-        $except = $this->parameter('except');
-
-        if ($except AND $except == $value) {
-            return true;
-        }
-
-        // do query
-        $stmt = $this->pdo->prepare("select count(*) as count from `{$table}` where `{$column}` = :value");
-        $stmt->bindParam(':value', $value);
-        $stmt->execute();
-        $data = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        // true for valid, false for invalid
-        return intval($data['count']) === 0;
-    }
-}
-
-```
-
-Then you need to register `UniqueRule` instance into validator like this:
-
-```php
-use Nelsonkti\Validation\Validator;
-
-$validator = new Validator;
-
-$validator->addValidator('unique', new UniqueRule($pdo));
-```
-
-Now you can use it like this:
-
-```php
-$validation = $validator->validate($_POST, [
-    'email' => 'email|unique:users,email,exception@mail.com'
-]);
-```
-
-In `UniqueRule` above, property `$message` is used for default invalid message. And property `$fillable_params` is used for `fillParameters` method (defined in `Nelsonkti\Validation\Rule` class). By default `fillParameters` will fill parameters listed in `$fillable_params`. For example `unique:users,email,exception@mail.com` in example above, will set:
-
-```php
-$params['table'] = 'users';
-$params['column'] = 'email';
-$params['except'] = 'exception@mail.com';
-```
-
-> If you want your custom rule accept parameter list like `in`,`not_in`, or `uploaded_file` rules,
-  you just need to override `fillParameters(array $params)` method in your custom rule class.
-
-Note that `unique` rule that we created above also can be used like this:
-
-```php
-$validation = $validator->validate($_POST, [
-    'email' => [
-    	'required', 'email',
-    	$validator('unique', 'users', 'email')->message('Custom message')
-    ]
-]);
-```
-
-So you can improve `UniqueRule` class above by adding some methods that returning its own instance like this:
-
-```php
-<?php
-
-use Nelsonkti\Validation\Rule;
-
-class UniqueRule extends Rule
-{
-    ...
-
-    public function table($table)
-    {
-        $this->params['table'] = $table;
-        return $this;
-    }
-
-    public function column($column)
-    {
-        $this->params['column'] = $column;
-        return $this;
-    }
-
-    public function except($value)
-    {
-        $this->params['except'] = $value;
-        return $this;
-    }
-
-    ...
-}
-
-```
-
-Then you can use it in more funky way like this:
-
-```php
-$validation = $validator->validate($_POST, [
-    'email' => [
-    	'required', 'email',
-    	$validator('unique')->table('users')->column('email')->except('exception@mail.com')->message('Custom message')
-    ]
-]);
-```
-
-#### Implicit Rule
-
-Implicit rule is a rule that if it's invalid, then next rules will be ignored. For example if attribute didn't pass `required*` rules, mostly it's next rules will also be invalids. So to prevent our next rules messages to get collected, we make `required*` rules to be implicit.
-
-To make your custom rule implicit, you can make `$implicit` property value to be `true`. For example:
-
-```php
-<?php
-
-use Nelsonkti\Validation\Rule;
-
-class YourCustomRule extends Rule
-{
-
-    protected $implicit = true;
-
+    return [
+        'rules' => [
+            'even_number' =>  ['required',
+                function ($value) {
+                    // false = invalid
+                    return (is_numeric($value) AND $value % 2 === 0);
+                }]
+        ],
+    ];
 }
 ```
 
-#### Modify Value
-
-In some case, you may want your custom rule to be able to modify it's attribute value like our `default/defaults` rule. So in current and next rules checks, your modified value will be used.
-
-To do this, you should implements `Nelsonkti\Validation\Rules\Interfaces\ModifyValue` and create method `modifyValue($value)` to your custom rule class.
-
-For example:
-
-```php
-<?php
-
-use Nelsonkti\Validation\Rule;
-use Nelsonkti\Validation\Rules\Interfaces\ModifyValue;
-
-class YourCustomRule extends Rule implements ModifyValue
+您可以通过返回字符串来设置无效消息。例如，上面的示例可以改为：
+```php 
+public function rulesWhenCreate()
 {
-    ...
-
-    public function modifyValue($value)
-    {
-        // Do something with $value
-
-        return $value;
-    }
-
-    ...
+    return [
+        'rules' => [
+            'even_number' =>  [
+                'required',
+                function ($value) {
+                    if (!is_numeric($value)) {
+                        return ":attribute must be numeric.";
+                    }
+                    if ($value % 2 !== 0) {
+                        return ":attribute is not even number.";
+                    }
+                    // 如果值有效，可以返回 true 或不返回任何内容
+                }
+           ]
+        ],
+    ];
 }
 ```
+注意：Rakit\Validation\Rules\Callback 实例绑定到您的闭包中。因此，您可以使用 $this 访问规则属性和方法。
 
-#### Before Validation Hook
-
-You may want to do some preparation before validation running. For example our `uploaded_file` rule will resolves attribute value that come from `$_FILES` (undesirable) array structure to be well-organized array structure, so we can validate multiple file upload just like validating other data.
-
-To do this, you should implements `Nelsonkti\Validation\Rules\Interfaces\BeforeValidate` and create method `beforeValidate()` to your custom rule class.
-
-For example:
-
+### nullable
+需要验证的字段可以为 null。
 ```php
-<?php
-
-use Nelsonkti\Validation\Rule;
-use Nelsonkti\Validation\Rules\Interfaces\BeforeValidate;
-
-class YourCustomRule extends Rule implements BeforeValidate
-{
-    ...
-
-    public function beforeValidate()
-    {
-        $attribute = $this->getAttribute(); // Nelsonkti\Validation\Attribute instance
-        $validation = $this->validation; // Nelsonkti\Validation\Validation instance
-
-        // Do something with $attribute and $validation
-        // For example change attribute value
-        $validation->setValue($attribute->getKey(), "your custom value");
-    }
-
-    ...
-}
+'id'=>'nullable|integer|min:1', 
 ```

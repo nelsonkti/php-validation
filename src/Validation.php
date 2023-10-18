@@ -123,7 +123,24 @@ class Validation
     public function firstErrorMessage(): string
     {
         $error = $this->errors->firstOfAll();
-        return is_array($error) ? current($error) : '';
+
+        return $this->getLastValue($error);
+    }
+
+    /**
+     * Get the last error value
+     *
+     * @param $array
+     * @return mixed
+     */
+    public function getLastValue($array)
+    {
+        if (is_array($array)) {
+            end($array); // 将数组的内部指针移动到最后一个元素
+            return $this->getLastValue(current($array)); // 递归调用，处理嵌套数组
+        } else {
+            return $array; // 返回最后一个值
+        }
     }
 
     /**

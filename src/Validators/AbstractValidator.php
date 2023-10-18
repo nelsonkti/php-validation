@@ -23,9 +23,9 @@ abstract class AbstractValidator implements ValidatorInterface
      * @param string $when 待调用的方法
      * @param array $data 待验证的数据
      * @param bool $throwError 是否抛出错误
-     * @return \common\validation\AbstractValidation
+     * @return AbstractValidator
      */
-    public final function validate(string $when, array $data, bool $throwError = true)
+    public final function validate(string $when, array $data, bool $throwError = true): ?ValidatorInterface
     {
         // 保留待验证的数据
         $this->validationData = $data;
@@ -40,9 +40,19 @@ abstract class AbstractValidator implements ValidatorInterface
         return $this;
     }
 
-    public function getValidationData(): array
+    public function getValidatedData(): array
     {
-        return $this->validationData;
+        return $this->validator->getValidatedData() ?? [];
+    }
+
+    public function getValidData(): array
+    {
+        return $this->validator->getValidatedData() ?? [];
+    }
+
+    public function getInvalidData(): array
+    {
+        return $this->validator->getInvalidData() ?? [];
     }
 
     public function getValidator(): Validation

@@ -1,10 +1,4 @@
 <?php
-/**
- * 文件描述
- *
- * @author 傅增耀
- * @time 2023-10-13 14:20:12
- */
 
 namespace Nelsonkti\Validation\Validators;
 
@@ -20,9 +14,33 @@ interface ValidatorInterface
      * @param bool $throwError 是否抛出错误
      * @return mixed
      */
-    public function validate(string $when, array $data, bool $throwError = true);
+    public function validate(string $when, array $data, bool $throwError = true): ?ValidatorInterface;
 
-    public function getValidationData(): array;
-
+    /**
+     * 获取验证器
+     *
+     * @return Validation
+     */
     public function getValidator(): Validation;
+
+    /**
+     * 获取已验证的数据
+     *
+     * @return array
+     */
+    public function getValidatedData(): array;
+
+    /**
+     * 获取有效数据
+     *
+     * @return array
+     */
+    public function getValidData(): array;
+
+    /**
+     * 获取无效数据
+     *
+     * @return array
+     */
+    public function getInvalidData(): array;
 }
